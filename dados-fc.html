@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FootStats Global — Dados do Futebol Mundial</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:ital,wght@0,400;0,600;0,700;1,400&family=Barlow+Condensed:wght@500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #060a0f;
+    --bg2: #0d1520;
+    --bg3: #101c2c;
+    --card: #111d2e;
+    --card2: #162233;
+    --border: #1e3048;
+    --accent: #00e676;
+    --accent2: #00b0ff;
+    --accent3: #ff6d00;
+    --gold: #ffd600;
+    --red: #ff1744;
+    --text: #e8f4ff;
+    --muted: #5a7a9a;
+    --glow: 0 0 30px rgba(0,230,118,0.25);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Barlow', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ── NOISE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: .6;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 100;
+    background: rgba(6,10,15,0.92);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem;
+    letter-spacing: .08em;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,230,118,.5);
+  }
+  .logo span { color: var(--text); }
+  nav { display: flex; gap: 1.5rem; }
+  nav a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: .85rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    transition: color .2s;
+  }
+  nav a:hover { color: var(--accent); }
+  .badge-live {
+    background: var(--red);
+    color: #fff;
+    font-size: .65rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    letter-spacing: .1em;
+    animation: pulse-badge 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse-badge { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+  /* ── HERO ── */
+  #hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    padding: 120px 2rem 80px;
+    overflow: hidden;
+  }
+  .hero-pitch {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 60%, rgba(0,100,50,.18) 0%, transparent 70%);
+    z-index: 0;
+  }
+  .hero-pitch::before {
+    content:'';
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    width:500px; height:500px;
+    border-radius:50%;
+    border: 1px solid rgba(0,230,118,.06);
+    box-shadow:
+      0 0 0 80px rgba(0,230,118,.03),
+      0 0 0 160px rgba(0,230,118,.02),
+      0 0 0 260px rgba(0,230,118,.01);
+  }
+  .hero-lines {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(to bottom, rgba(0,230,118,.05) 1px, transparent 1px) 0 0 / 100% 120px,
+      linear-gradient(to right, rgba(0,230,118,.03) 1px, transparent 1px) 0 0 / 80px 100%;
+    z-index: 0;
+  }
+  .hero-content { position: relative; z-index: 1; }
+  .hero-eyebrow {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.2rem;
+    opacity: 0;
+    animation: fadeUp .8s .2s forwards;
+  }
+  .hero-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(4rem, 12vw, 9rem);
+    line-height: .92;
+    letter-spacing: .04em;
+    color: var(--text);
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp .8s .4s forwards;
+  }
+  .hero-title .hl { color: var(--accent); display: block; text-shadow: var(--glow); }
+  .hero-sub {
+    font-size: 1.1rem;
+    color: var(--muted);
+    max-width: 480px;
+    margin: 0 auto 3rem;
+    line-height: 1.6;
+    opacity: 0;
+    animation: fadeUp .8s .6s forwards;
+  }
+
+  /* ── HERO COUNTERS ── */
+  .hero-counters {
+    display: flex; gap: 2rem; flex-wrap: wrap; justify-content: center;
+    opacity: 0; animation: fadeUp .8s .8s forwards;
+  }
+  .counter-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem 2rem;
+    min-width: 130px;
+    text-align: center;
+    transition: border-color .3s, transform .3s;
+  }
+  .counter-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: var(--glow); }
+  .counter-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.6rem;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .counter-label {
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: .3rem;
+  }
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ── SCROLL INDICATOR ── */
+  .scroll-hint {
+    position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: .4rem;
+    color: var(--muted); font-size: .7rem; letter-spacing: .15em; text-transform: uppercase;
+    z-index: 1;
+    animation: bob 2s ease-in-out infinite;
+  }
+  .scroll-hint::after { content: '▼'; font-size: .8rem; }
+  @keyframes bob { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(6px)} }
+
+  /* ── SECTIONS ── */
+  section { position: relative; z-index: 1; padding: 5rem 2rem; }
+  .section-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: .8rem;
+  }
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2.2rem, 5vw, 3.5rem);
+    letter-spacing: .05em;
+    color: var(--text);
+    margin-bottom: 3rem;
+  }
+  .section-title span { color: var(--accent); }
+  .container { max-width: 1280px; margin: 0 auto; }
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0 2rem;
+  }
+
+  /* ── LEAGUE TABS ── */
+  .tabs {
+    display: flex; gap: .5rem; flex-wrap: wrap;
+    margin-bottom: 2.5rem;
+  }
+  .tab {
+    padding: .45rem 1.2rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: .9rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .tab:hover { border-color: var(--accent); color: var(--accent); }
+  .tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+    box-shadow: 0 0 20px rgba(0,230,118,.4);
+  }
+
+  /* ── SEARCH & FILTER BAR ── */
+  .filter-bar {
+    display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;
+    margin-bottom: 1.5rem;
+  }
+  .search-wrap { position: relative; flex: 1; min-width: 200px; }
+  .search-icon {
+    position: absolute; left: 1rem; top: 50%; transform: translateY(-50%);
+    color: var(--muted); font-size: 1rem;
+  }
+  .search-input, .select-input {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    font-size: .9rem;
+    padding: .65rem 1rem .65rem 2.8rem;
+    width: 100%;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .select-input { padding-left: 1rem; min-width: 140px; cursor: pointer; }
+  .search-input::placeholder { color: var(--muted); }
+  .search-input:focus, .select-input:focus { border-color: var(--accent); }
+  .select-input option { background: var(--card); }
+
+  /* ── TABLE ── */
+  .table-wrap {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: var(--bg3); position: sticky; top: 0; z-index: 5; }
+  th {
+    padding: .9rem 1rem;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: color .2s;
+    border-bottom: 1px solid var(--border);
+  }
+  th:hover { color: var(--accent); }
+  th.sorted { color: var(--accent); }
+  th .sort-arrow { margin-left: .3rem; opacity: .4; }
+  th.sorted .sort-arrow { opacity: 1; }
+  tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+  tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(0,230,118,.04); }
+  td { padding: .8rem 1rem; font-size: .88rem; white-space: nowrap; }
+  .td-rank {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    color: var(--muted);
+    width: 40px;
+  }
+  .td-rank.gold { color: var(--gold); }
+  .td-rank.silver { color: #aaa; }
+  .td-rank.bronze { color: #cd7f32; }
+  .player-name { font-weight: 700; color: var(--text); }
+  .team-name { color: var(--muted); font-size: .8rem; }
+  .pos-badge {
+    display: inline-block;
+    padding: .15rem .55rem;
+    border-radius: 4px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+  }
+  .pos-ATA { background: rgba(255,109,0,.15); color: #ff6d00; border: 1px solid rgba(255,109,0,.3); }
+  .pos-MEI { background: rgba(0,176,255,.15); color: #00b0ff; border: 1px solid rgba(0,176,255,.3); }
+  .pos-VOL { background: rgba(156,39,176,.15); color: #ce93d8; border: 1px solid rgba(156,39,176,.3); }
+  .pos-ZAG { background: rgba(0,230,118,.1); color: var(--accent); border: 1px solid rgba(0,230,118,.3); }
+  .pos-LAT { background: rgba(255,214,0,.1); color: var(--gold); border: 1px solid rgba(255,214,0,.3); }
+  .pos-GOL { background: rgba(255,23,68,.12); color: #ff6090; border: 1px solid rgba(255,23,68,.3); }
+  .stat-bar-wrap { display: flex; align-items: center; gap: .6rem; }
+  .stat-bar { flex: 1; height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .stat-bar-fill { height: 100%; border-radius: 99px; transition: width .4s; }
+  .fill-green { background: var(--accent); }
+  .fill-blue { background: var(--accent2); }
+  .fill-orange { background: var(--accent3); }
+  .fill-yellow { background: var(--gold); }
+  .stat-val { min-width: 28px; text-align: right; font-weight: 700; font-size: .88rem; }
+  .no-results {
+    padding: 4rem;
+    text-align: center;
+    color: var(--muted);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.2rem;
+    letter-spacing: .1em;
+  }
+
+  /* ── PAGINATION ── */
+  .pagination {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 1.5rem;
+    font-size: .85rem;
+    color: var(--muted);
+  }
+  .page-btns { display: flex; gap: .4rem; }
+  .page-btn {
+    width: 34px; height: 34px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: .85rem;
+    transition: all .2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .page-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .page-btn.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 700; }
+  .page-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+  /* ── TOP SCORERS ── */
+  #top-scorers { background: var(--bg2); }
+  .podium {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.2rem;
+    margin-bottom: 3rem;
+  }
+  .player-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.5rem;
+    transition: transform .25s, border-color .25s, box-shadow .25s;
+    cursor: default;
+  }
+  .player-card:hover { transform: translateY(-5px); border-color: var(--accent); box-shadow: var(--glow); }
+  .player-card.rank-1 { border-color: var(--gold); box-shadow: 0 0 30px rgba(255,214,0,.15); }
+  .player-card.rank-2 { border-color: #aaa; }
+  .player-card.rank-3 { border-color: #cd7f32; }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+  .card-rank-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.5rem;
+    line-height: 1;
+    color: var(--muted);
+  }
+  .rank-1 .card-rank-num { color: var(--gold); }
+  .rank-2 .card-rank-num { color: #bbb; }
+  .rank-3 .card-rank-num { color: #cd7f32; }
+  .card-player { font-size: 1.1rem; font-weight: 700; margin-bottom: .2rem; }
+  .card-meta { font-size: .8rem; color: var(--muted); }
+  .card-stat-main {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 3.5rem;
+    color: var(--accent);
+    line-height: 1;
+    text-align: right;
+  }
+  .rank-1 .card-stat-main { text-shadow: 0 0 20px rgba(0,230,118,.6); }
+  .card-stat-label {
+    font-size: .65rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: right;
+  }
+  .card-stats-row {
+    display: flex;
+    gap: 1.5rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+    margin-top: 1rem;
+  }
+  .mini-stat { flex: 1; }
+  .mini-val { font-weight: 700; font-size: .95rem; }
+  .mini-label { font-size: .65rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+
+  /* ── CHARTS ── */
+  #analytics { background: var(--bg); }
+  .charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 1.5rem;
+  }
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.5rem;
+  }
+  .chart-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1.2rem;
+  }
+  .chart-canvas-wrap { position: relative; height: 250px; }
+
+  /* ── TEAM CARDS ── */
+  #teams { background: var(--bg2); }
+  .teams-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+  }
+  .team-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.3rem 1.5rem;
+    transition: all .25s;
+    cursor: pointer;
+  }
+  .team-card:hover { border-color: var(--accent2); transform: translateY(-3px); }
+  .team-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  .team-card-name { font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; font-weight: 700; letter-spacing: .05em; }
+  .team-card-league { font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .league-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .wrate {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    color: var(--accent);
+  }
+  .wrate-label { font-size: .65rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .team-mini-stats { display: flex; gap: 1rem; }
+  .tms { text-align: center; flex: 1; }
+  .tms-val { font-weight: 700; font-size: .95rem; }
+  .tms-label { font-size: .65rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    padding: 2.5rem 2rem;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: .8rem;
+    letter-spacing: .08em;
+  }
+  footer strong { color: var(--accent); }
+
+  /* ── ANIMATIONS ON SCROLL ── */
+  .reveal { opacity: 0; transform: translateY(28px); transition: opacity .7s, transform .7s; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    nav { display: none; }
+    .hero-counters { gap: .8rem; }
+    .counter-card { min-width: 100px; padding: .8rem 1rem; }
+    .counter-num { font-size: 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo"><span style="color:var(--text)">DADOS</span> <span>FC</span></div>
+  <nav>
+    <a href="#players">Jogadores</a>
+    <a href="#top-scorers">Artilheiros</a>
+    <a href="#analytics">Analytics</a>
+    <a href="#teams">Times</a>
+    <span class="badge-live">150 jogadores</span>
+  </nav>
+</header>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-pitch"></div>
+  <div class="hero-lines"></div>
+  <div class="hero-content">
+    <p class="hero-eyebrow">⚽ Base de dados · Futebol Mundial</p>
+    <h1 class="hero-title">
+      DADOS <span class="hl">FC</span>
+    </h1>
+    <p class="hero-sub">Estatísticas completas de 150 jogadores de elite distribuídos em 6 ligas e 15 clubes do futebol mundial.</p>
+    <div class="hero-counters" id="heroCounters">
+      <div class="counter-card"><div class="counter-num" id="cnt-players">0</div><div class="counter-label">Jogadores</div></div>
+      <div class="counter-card"><div class="counter-num" id="cnt-goals">0</div><div class="counter-label">Gols Totais</div></div>
+      <div class="counter-card"><div class="counter-num" id="cnt-assists">0</div><div class="counter-label">Assistências</div></div>
+      <div class="counter-card"><div class="counter-num" id="cnt-leagues">0</div><div class="counter-label">Ligas</div></div>
+      <div class="counter-card"><div class="counter-num" id="cnt-clubs">0</div><div class="counter-label">Clubes</div></div>
+      <div class="counter-card"><div class="counter-num" id="cnt-nat">0</div><div class="counter-label">Nacion.</div></div>
+    </div>
+  </div>
+  <div class="scroll-hint">scroll</div>
+</section>
+
+<hr class="divider">
+
+<!-- PLAYERS TABLE -->
+<section id="players">
+  <div class="container">
+    <p class="section-label reveal">📋 Elenco Completo</p>
+    <h2 class="section-title reveal">TODOS OS <span>JOGADORES</span></h2>
+
+    <div class="tabs reveal" id="leagueTabs"></div>
+
+    <div class="filter-bar reveal">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" id="searchInput" placeholder="Buscar jogador ou time...">
+      </div>
+      <select class="select-input" id="posFilter">
+        <option value="">Todas as Posições</option>
+        <option value="ATA">⚡ Atacante</option>
+        <option value="MEI">🎯 Meia</option>
+        <option value="VOL">🛡️ Volante</option>
+        <option value="ZAG">🏰 Zagueiro</option>
+        <option value="LAT">↔️ Lateral</option>
+        <option value="GOL">🧤 Goleiro</option>
+      </select>
+      <select class="select-input" id="sortField">
+        <option value="Gols_Marcados">Ordenar: Gols</option>
+        <option value="Assistencias">Ordenar: Assistências</option>
+        <option value="Partidas_Disputadas">Ordenar: Partidas</option>
+        <option value="Minutos_Jogados">Ordenar: Minutos</option>
+        <option value="Cartoes_Amarelos">Ordenar: Amarelos</option>
+        <option value="Vitorias">Ordenar: Vitórias</option>
+      </select>
+    </div>
+
+    <div class="table-wrap reveal">
+      <table id="playersTable">
+        <thead>
+          <tr>
+            <th class="td-rank">#</th>
+            <th data-col="Jogador">Jogador <span class="sort-arrow">↕</span></th>
+            <th data-col="Time">Time <span class="sort-arrow">↕</span></th>
+            <th data-col="Liga">Liga <span class="sort-arrow">↕</span></th>
+            <th data-col="Posicao">Pos <span class="sort-arrow">↕</span></th>
+            <th data-col="Idade">Idade <span class="sort-arrow">↕</span></th>
+            <th data-col="Partidas_Disputadas">Jogos <span class="sort-arrow">↕</span></th>
+            <th data-col="Gols_Marcados">Gols <span class="sort-arrow">↕</span></th>
+            <th data-col="Assistencias">Assists <span class="sort-arrow">↕</span></th>
+            <th data-col="Vitorias">V/E/D <span class="sort-arrow">↕</span></th>
+            <th data-col="Cartoes_Amarelos">Cartões <span class="sort-arrow">↕</span></th>
+            <th data-col="Minutos_Jogados">Min. <span class="sort-arrow">↕</span></th>
+            <th>Nac.</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <div class="no-results" id="noResults" style="display:none">Nenhum jogador encontrado</div>
+    </div>
+
+    <div class="pagination" id="pagination">
+      <span id="pageInfo">Mostrando 1-25 de 150</span>
+      <div class="page-btns" id="pageBtns"></div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- TOP SCORERS -->
+<section id="top-scorers">
+  <div class="container">
+    <p class="section-label reveal">🏆 Classificação</p>
+    <h2 class="section-title reveal">TOP <span>ARTILHEIROS</span></h2>
+    <div class="podium reveal" id="podium"></div>
+
+    <h2 class="section-title reveal" style="margin-top:3rem">TOP <span>ASSISTENTES</span></h2>
+    <div class="podium reveal" id="podiumAssists"></div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ANALYTICS -->
+<section id="analytics">
+  <div class="container">
+    <p class="section-label reveal">📊 Análise</p>
+    <h2 class="section-title reveal">ANALYTICS & <span>DADOS</span></h2>
+    <div class="charts-grid">
+      <div class="chart-card reveal">
+        <div class="chart-title">⚽ Gols por Liga</div>
+        <div class="chart-canvas-wrap"><canvas id="chartGoalsLeague"></canvas></div>
+      </div>
+      <div class="chart-card reveal">
+        <div class="chart-title">🎯 Assistências por Liga</div>
+        <div class="chart-canvas-wrap"><canvas id="chartAssistsLeague"></canvas></div>
+      </div>
+      <div class="chart-card reveal">
+        <div class="chart-title">👥 Jogadores por Posição</div>
+        <div class="chart-canvas-wrap"><canvas id="chartPositions"></canvas></div>
+      </div>
+      <div class="chart-card reveal">
+        <div class="chart-title">📅 Idade Média por Posição</div>
+        <div class="chart-canvas-wrap"><canvas id="chartAge"></canvas></div>
+      </div>
+      <div class="chart-card reveal" style="grid-column: 1/-1; max-width: 100%;">
+        <div class="chart-title">🔥 Top 10 Goleadores do Dataset</div>
+        <div class="chart-canvas-wrap" style="height:300px"><canvas id="chartTop10"></canvas></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- TEAMS -->
+<section id="teams">
+  <div class="container">
+    <p class="section-label reveal">🏟️ Clubes</p>
+    <h2 class="section-title reveal">VISÃO POR <span>TIMES</span></h2>
+    <div class="teams-grid reveal" id="teamsGrid"></div>
+  </div>
+</section>
+
+<footer>
+  Construído com dados reais do futebol mundial · <strong>FootStats Global</strong> · 150 jogadores · 6 ligas
+</footer>
+
+<script>
+// ──────────────────────────────────────────────
+//  DATA
+// ──────────────────────────────────────────────
+const RAW = [{"ID":"1","Jogador":"Pedro","Time":"Flamengo","Liga":"Brasileirao","Posicao":"ATA","Idade":"26","Partidas_Disputadas":"35","Vitorias":"20","Empates":"8","Derrotas":"7","Gols_Marcados":"22","Assistencias":"5","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"2950","Nacionalidade":"Brasileiro"},{"ID":"2","Jogador":"Gabigol","Time":"Flamengo","Liga":"Brasileirao","Posicao":"ATA","Idade":"27","Partidas_Disputadas":"30","Vitorias":"18","Empates":"6","Derrotas":"6","Gols_Marcados":"12","Assistencias":"3","Cartoes_Amarelos":"8","Cartoes_Vermelhos":"1","Minutos_Jogados":"2100","Nacionalidade":"Brasileiro"},{"ID":"3","Jogador":"Arrascaeta","Time":"Flamengo","Liga":"Brasileirao","Posicao":"MEI","Idade":"29","Partidas_Disputadas":"32","Vitorias":"19","Empates":"7","Derrotas":"6","Gols_Marcados":"8","Assistencias":"14","Cartoes_Amarelos":"3","Cartoes_Vermelhos":"0","Minutos_Jogados":"2700","Nacionalidade":"Uruguaio"},{"ID":"4","Jogador":"De La Cruz","Time":"Flamengo","Liga":"Brasileirao","Posicao":"MEI","Idade":"26","Partidas_Disputadas":"33","Vitorias":"19","Empates":"8","Derrotas":"6","Gols_Marcados":"5","Assistencias":"9","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"2810","Nacionalidade":"Uruguaio"},{"ID":"5","Jogador":"Pulgar","Time":"Flamengo","Liga":"Brasileirao","Posicao":"VOL","Idade":"30","Partidas_Disputadas":"28","Vitorias":"15","Empates":"7","Derrotas":"6","Gols_Marcados":"2","Assistencias":"4","Cartoes_Amarelos":"11","Cartoes_Vermelhos":"1","Minutos_Jogados":"2450","Nacionalidade":"Chileno"},{"ID":"6","Jogador":"Gerson","Time":"Flamengo","Liga":"Brasileirao","Posicao":"MEI","Idade":"26","Partidas_Disputadas":"34","Vitorias":"20","Empates":"7","Derrotas":"7","Gols_Marcados":"6","Assistencias":"7","Cartoes_Amarelos":"7","Cartoes_Vermelhos":"0","Minutos_Jogados":"2890","Nacionalidade":"Brasileiro"},{"ID":"7","Jogador":"Ayrton Lucas","Time":"Flamengo","Liga":"Brasileirao","Posicao":"LAT","Idade":"26","Partidas_Disputadas":"36","Vitorias":"21","Empates":"8","Derrotas":"7","Gols_Marcados":"4","Assistencias":"6","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"3100","Nacionalidade":"Brasileiro"},{"ID":"8","Jogador":"Leo Pereira","Time":"Flamengo","Liga":"Brasileirao","Posicao":"ZAG","Idade":"28","Partidas_Disputadas":"33","Vitorias":"18","Empates":"8","Derrotas":"7","Gols_Marcados":"3","Assistencias":"1","Cartoes_Amarelos":"9","Cartoes_Vermelhos":"0","Minutos_Jogados":"2970","Nacionalidade":"Brasileiro"},{"ID":"9","Jogador":"Fabricio Bruno","Time":"Flamengo","Liga":"Brasileirao","Posicao":"ZAG","Idade":" ","Partidas_Disputadas":"35","Vitorias":"20","Empates":"8","Derrotas":"7","Gols_Marcados":"1","Assistencias":"0","Cartoes_Amarelos":"7","Cartoes_Vermelhos":"1","Minutos_Jogados":"3150","Nacionalidade":"Brasileiro"},{"ID":"10","Jogador":"Rossi","Time":"Flamengo","Liga":"Brasileirao","Posicao":"GOL","Idade":"28","Partidas_Disputadas":"38","Vitorias":"22","Empates":"9","Derrotas":"7","Gols_Marcados":"0","Assistencias":"0","Cartoes_Amarelos":"3","Cartoes_Vermelhos":"0","Minutos_Jogados":"3420","Nacionalidade":"Argentino"},{"ID":"11","Jogador":"Estevao","Time":"Palmeiras","Liga":"Brasileirao","Posicao":"ATA","Idade":"17","Partidas_Disputadas":"25","Vitorias":"15","Empates":"5","Derrotas":"5","Gols_Marcados":"8","Assistencias":"4","Cartoes_Amarelos":"2","Cartoes_Vermelhos":"0","Minutos_Jogados":"1600","Nacionalidade":"Brasileiro"},{"ID":"12","Jogador":"Flaco Lopez","Time":"Palmeiras","Liga":"Brasileirao","Posicao":"ATA","Idade":"23","Partidas_Disputadas":"32","Vitorias":"18","Empates":"8","Derrotas":"6","Gols_Marcados":"14","Assistencias":"3","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"2400","Nacionalidade":"Argentino"},{"ID":"13","Jogador":"Raphael Veiga","Time":"Palmeiras","Liga":"Brasileirao","Posicao":"MEI","Idade":"28","Partidas_Disputadas":"36","Vitorias":"21","Empates":"9","Derrotas":"6","Gols_Marcados":"15","Assistencias":"10","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"3050","Nacionalidade":"Brasileiro"},{"ID":"14","Jogador":"Ze Rafael","Time":"Palmeiras","Liga":"Brasileirao","Posicao":"VOL","Idade":"30","Partidas_Disputadas":"30","Vitorias":"17","Empates":"8","Derrotas":"5","Gols_Marcados":"3","Assistencias":"4","Cartoes_Amarelos":"10","Cartoes_Vermelhos":"1","Minutos_Jogados":"2600","Nacionalidade":"Brasileiro"},{"ID":"15","Jogador":"Richard Rios","Time":"Palmeiras","Liga":"Brasileirao","Posicao":"VOL","Idade":"23","Partidas_Disputadas":"34","Vitorias":"19","Empates":"9","Derrotas":"6","Gols_Marcados":"4","Assistencias":"3","Cartoes_Amarelos":"8","Cartoes_Vermelhos":"0","Minutos_Jogados":"2750","Nacionalidade":"Colombiano"},{"ID":"16","Jogador":"Piquerez","Time":"Palmeiras","Liga":"Brasileirao","Posicao":"LAT","Idade":"25","Partidas_Disputadas":"35","Vitorias":"20","Empates":"9","Derrotas":"6","Gols_Marcados":"5","Assistencias":"7","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"3000","Nacionalidade":"Uruguaio"},{"ID":"17","Jogador":"Murilo","Time":"Palmeiras","Liga":"Brasileirao","Posicao":"ZAG","Idade":"27","Partidas_Disputadas":"33","Vitorias":"19","Empates":"8","Derrotas":"6","Gols_Marcados":"4","Assistencias":"1","Cartoes_Amarelos":"7","Cartoes_Vermelhos":"1","Minutos_Jogados":"2970","Nacionalidade":"Brasileiro"},{"ID":"18","Jogador":"Gustavo Gomez","Time":"Palmeiras","Liga":"Brasileirao","Posicao":"ZAG","Idade":"30","Partidas_Disputadas":"35","Vitorias":"21","Empates":"8","Derrotas":"6","Gols_Marcados":"6","Assistencias":"0","Cartoes_Amarelos":"9","Cartoes_Vermelhos":"0","Minutos_Jogados":"3150","Nacionalidade":"Paraguaio"},{"ID":"19","Jogador":"Weverton","Time":"Palmeiras","Liga":"Brasileirao","Posicao":"GOL","Idade":"36","Partidas_Disputadas":"38","Vitorias":"22","Empates":"10","Derrotas":"6","Gols_Marcados":"0","Assistencias":"0","Cartoes_Amarelos":"2","Cartoes_Vermelhos":"0","Minutos_Jogados":"3420","Nacionalidade":"Brasileiro"},{"ID":"20","Jogador":"Marcos Rocha","Time":"Palmeiras","Liga":"Brasileirao","Posicao":"LAT","Idade":"35","Partidas_Disputadas":"28","Vitorias":"16","Empates":"7","Derrotas":"5","Gols_Marcados":"1","Assistencias":"4","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"2300","Nacionalidade":"Brasileiro"},{"ID":"21","Jogador":"Calleri","Time":"Sao Paulo","Liga":"Brasileirao","Posicao":"ATA","Idade":"30","Partidas_Disputadas":"34","Vitorias":"16","Empates":"10","Derrotas":"8","Gols_Marcados":"16","Assistencias":"4","Cartoes_Amarelos":"8","Cartoes_Vermelhos":"1","Minutos_Jogados":"2900","Nacionalidade":"Argentino"},{"ID":"22","Jogador":"Lucas Moura","Time":"Sao Paulo","Liga":"Brasileirao","Posicao":"MEI","Idade":"31","Partidas_Disputadas":"30","Vitorias":"15","Empates":"8","Derrotas":"7","Gols_Marcados":"9","Assistencias":"7","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"2500","Nacionalidade":"Brasileiro"},{"ID":"23","Jogador":"Luciano","Time":"Sao Paulo","Liga":"Brasileirao","Posicao":"ATA","Idade":"30","Partidas_Disputadas":"35","Vitorias":"17","Empates":"10","Derrotas":"8","Gols_Marcados":"12","Assistencias":"5","Cartoes_Amarelos":"12","Cartoes_Vermelhos":"1","Minutos_Jogados":"2750","Nacionalidade":"Brasileiro"},{"ID":"24","Jogador":"Pablo Maia","Time":"Sao Paulo","Liga":"Brasileirao","Posicao":"VOL","Idade":"22","Partidas_Disputadas":"32","Vitorias":"15","Empates":"9","Derrotas":"8","Gols_Marcados":"3","Assistencias":"2","Cartoes_Amarelos":"9","Cartoes_Vermelhos":"0","Minutos_Jogados":"2800","Nacionalidade":"Brasileiro"},{"ID":"25","Jogador":"Alisson","Time":"Sao Paulo","Liga":"Brasileirao","Posicao":"MEI","Idade":"30","Partidas_Disputadas":"36","Vitorias":"17","Empates":"11","Derrotas":"8","Gols_Marcados":"4","Assistencias":"6","Cartoes_Amarelos":"7","Cartoes_Vermelhos":"0","Minutos_Jogados":"3050","Nacionalidade":"Brasileiro"},{"ID":"26","Jogador":"Welington","Time":"Sao Paulo","Liga":"Brasileirao","Posicao":"LAT","Idade":"23","Partidas_Disputadas":"33","Vitorias":"15","Empates":"10","Derrotas":"8","Gols_Marcados":"1","Assistencias":"5","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"2850","Nacionalidade":"Brasileiro"},{"ID":"27","Jogador":"Arboleda","Time":"Sao Paulo","Liga":"Brasileirao","Posicao":"ZAG","Idade":"32","Partidas_Disputadas":"35","Vitorias":"17","Empates":"10","Derrotas":"8","Gols_Marcados":"2","Assistencias":"0","Cartoes_Amarelos":"8","Cartoes_Vermelhos":"1","Minutos_Jogados":"3150","Nacionalidade":"Equatoriano"},{"ID":"28","Jogador":"Alan Franco","Time":"Sao Paulo","Liga":"Brasileirao","Posicao":"ZAG","Idade":"27","Partidas_Disputadas":"28","Vitorias":"13","Empates":"8","Derrotas":"7","Gols_Marcados":"1","Assistencias":"1","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"2400","Nacionalidade":"Argentino"},{"ID":"29","Jogador":"Rafael","Time":"Sao Paulo","Liga":"Brasileirao","Posicao":"GOL","Idade":"34","Partidas_Disputadas":"38","Vitorias":"18","Empates":"12","Derrotas":"8","Gols_Marcados":"0","Assistencias":"0","Cartoes_Amarelos":"2","Cartoes_Vermelhos":"0","Minutos_Jogados":"3420","Nacionalidade":"Brasileiro"},{"ID":"30","Jogador":"Rafinha","Time":"Sao Paulo","Liga":"Brasileirao","Posicao":"LAT","Idade":"38","Partidas_Disputadas":"25","Vitorias":"12","Empates":"7","Derrotas":"6","Gols_Marcados":"0","Assistencias":"3","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"1","Minutos_Jogados":"2000","Nacionalidade":"Brasileiro"},{"ID":"31","Jogador":"Hulk","Time":"Atletico-MG","Liga":"Brasileirao","Posicao":"ATA","Idade":"37","Partidas_Disputadas":"35","Vitorias":"18","Empates":"9","Derrotas":"8","Gols_Marcados":"18","Assistencias":"8","Cartoes_Amarelos":"9","Cartoes_Vermelhos":"1","Minutos_Jogados":"3100","Nacionalidade":"Brasileiro"},{"ID":"32","Jogador":"Paulinho","Time":"Atletico-MG","Liga":"Brasileirao","Posicao":"ATA","Idade":"23","Partidas_Disputadas":"36","Vitorias":"19","Empates":"9","Derrotas":"8","Gols_Marcados":"15","Assistencias":"6","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"3150","Nacionalidade":"Brasileiro"},{"ID":"33","Jogador":"Zaracho","Time":"Atletico-MG","Liga":"Brasileirao","Posicao":"MEI","Idade":"26","Partidas_Disputadas":"28","Vitorias":"14","Empates":"7","Derrotas":"7","Gols_Marcados":"5","Assistencias":"5","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"2300","Nacionalidade":"Argentino"},{"ID":"34","Jogador":"Gustavo Scarpa","Time":"Atletico-MG","Liga":"Brasileirao","Posicao":"MEI","Idade":"30","Partidas_Disputadas":"34","Vitorias":"17","Empates":"9","Derrotas":"8","Gols_Marcados":"7","Assistencias":"11","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"2900","Nacionalidade":"Brasileiro"},{"ID":"35","Jogador":"Battaglia","Time":"Atletico-MG","Liga":"Brasileirao","Posicao":"VOL","Idade":"32","Partidas_Disputadas":"30","Vitorias":"15","Empates":"8","Derrotas":"7","Gols_Marcados":"2","Assistencias":"1","Cartoes_Amarelos":"10","Cartoes_Vermelhos":"1","Minutos_Jogados":"2650","Nacionalidade":"Argentino"},{"ID":"36","Jogador":"Guilherme Arana","Time":"Atletico-MG","Liga":"Brasileirao","Posicao":"LAT","Idade":"27","Partidas_Disputadas":"35","Vitorias":"18","Empates":"9","Derrotas":"8","Gols_Marcados":"4","Assistencias":"7","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"3100","Nacionalidade":"Brasileiro"},{"ID":"37","Jogador":"Jemerson","Time":"Atletico-MG","Liga":"Brasileirao","Posicao":"ZAG","Idade":"31","Partidas_Disputadas":"32","Vitorias":"16","Empates":"8","Derrotas":"8","Gols_Marcados":"2","Assistencias":"0","Cartoes_Amarelos":"8","Cartoes_Vermelhos":"1","Minutos_Jogados":"2850","Nacionalidade":"Brasileiro"},{"ID":"38","Jogador":"Bruno Fuchs","Time":"Atletico-MG","Liga":"Brasileirao","Posicao":"ZAG","Idade":"25","Partidas_Disputadas":"29","Vitorias":"15","Empates":"7","Derrotas":"7","Gols_Marcados":"1","Assistencias":"1","Cartoes_Amarelos":"7","Cartoes_Vermelhos":"0","Minutos_Jogados":"2500","Nacionalidade":"Brasileiro"},{"ID":"39","Jogador":"Everson","Time":"Atletico-MG","Liga":"Brasileirao","Posicao":"GOL","Idade":"33","Partidas_Disputadas":"38","Vitorias":"19","Empates":"10","Derrotas":"9","Gols_Marcados":"0","Assistencias":"0","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"3420","Nacionalidade":"Brasileiro"},{"ID":"40","Jogador":"Saravia","Time":"Atletico-MG","Liga":"Brasileirao","Posicao":"LAT","Idade":"30","Partidas_Disputadas":"27","Vitorias":"13","Empates":"7","Derrotas":"7","Gols_Marcados":"0","Assistencias":"2","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"2200","Nacionalidade":"Argentino"},{"ID":"41","Jogador":"Tiquinho Soares","Time":"Botafogo","Liga":"Brasileirao","Posicao":"ATA","Idade":"33","Partidas_Disputadas":"34","Vitorias":"19","Empates":"7","Derrotas":"8","Gols_Marcados":"17","Assistencias":"5","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"2950","Nacionalidade":"Brasileiro"},{"ID":"42","Jogador":"Junior Santos","Time":"Botafogo","Liga":"Brasileirao","Posicao":"ATA","Idade":"29","Partidas_Disputadas":"36","Vitorias":"20","Empates":"8","Derrotas":"8","Gols_Marcados":"12","Assistencias":"6","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"3100","Nacionalidade":"Brasileiro"},{"ID":"43","Jogador":"Eduardo","Time":"Botafogo","Liga":"Brasileirao","Posicao":"MEI","Idade":"34","Partidas_Disputadas":"30","Vitorias":"17","Empates":"6","Derrotas":"7","Gols_Marcados":"8","Assistencias":"7","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"2500","Nacionalidade":"Brasileiro"},{"ID":"44","Jogador":"Tche Tche","Time":"Botafogo","Liga":"Brasileirao","Posicao":"VOL","Idade":"31","Partidas_Disputadas":"35","Vitorias":"19","Empates":"8","Derrotas":"8","Gols_Marcados":"3","Assistencias":"4","Cartoes_Amarelos":"8","Cartoes_Vermelhos":"0","Minutos_Jogados":"3050","Nacionalidade":"Brasileiro"},{"ID":"45","Jogador":"Marlon Freitas","Time":"Botafogo","Liga":"Brasileirao","Posicao":"VOL","Idade":"29","Partidas_Disputadas":"36","Vitorias":"20","Empates":"8","Derrotas":"8","Gols_Marcados":"4","Assistencias":"5","Cartoes_Amarelos":"9","Cartoes_Vermelhos":"1","Minutos_Jogados":"3150","Nacionalidade":"Brasileiro"},{"ID":"46","Jogador":"Hugo","Time":"Botafogo","Liga":"Brasileirao","Posicao":"LAT","Idade":"22","Partidas_Disputadas":"32","Vitorias":"17","Empates":"7","Derrotas":"8","Gols_Marcados":"2","Assistencias":"6","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"2700","Nacionalidade":"Brasileiro"},{"ID":"47","Jogador":"Lucas Halter","Time":"Botafogo","Liga":"Brasileirao","Posicao":"ZAG","Idade":"24","Partidas_Disputadas":"33","Vitorias":"18","Empates":"8","Derrotas":"7","Gols_Marcados":"3","Assistencias":"0","Cartoes_Amarelos":"7","Cartoes_Vermelhos":"1","Minutos_Jogados":"2900","Nacionalidade":"Brasileiro"},{"ID":"48","Jogador":"Bastos","Time":"Botafogo","Liga":"Brasileirao","Posicao":"ZAG","Idade":"32","Partidas_Disputadas":"30","Vitorias":"17","Empates":"6","Derrotas":"7","Gols_Marcados":"2","Assistencias":"0","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"2650","Nacionalidade":"Angolano"},{"ID":"49","Jogador":"John","Time":"Botafogo","Liga":"Brasileirao","Posicao":"GOL","Idade":"28","Partidas_Disputadas":"38","Vitorias":"21","Empates":"9","Derrotas":"8","Gols_Marcados":"0","Assistencias":"0","Cartoes_Amarelos":"3","Cartoes_Vermelhos":"0","Minutos_Jogados":"3420","Nacionalidade":"Brasileiro"},{"ID":"50","Jogador":"Mateo Ponte","Time":"Botafogo","Liga":"Brasileirao","Posicao":"LAT","Idade":"20","Partidas_Disputadas":"25","Vitorias":"13","Empates":"5","Derrotas":"7","Gols_Marcados":"1","Assistencias":"2","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"2000","Nacionalidade":"Uruguaio"},{"ID":"51","Jogador":"Diego Costa","Time":"Gremio","Liga":"Brasileirao","Posicao":"ATA","Idade":"35","Partidas_Disputadas":"28","Vitorias":"14","Empates":"6","Derrotas":"8","Gols_Marcados":"10","Assistencias":"3","Cartoes_Amarelos":"7","Cartoes_Vermelhos":"1","Minutos_Jogados":"2100","Nacionalidade":"Espanhol"},{"ID":"52","Jogador":"Soteldo","Time":"Gremio","Liga":"Brasileirao","Posicao":"ATA","Idade":"26","Partidas_Disputadas":"32","Vitorias":"16","Empates":"7","Derrotas":"9","Gols_Marcados":"6","Assistencias":"9","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"2650","Nacionalidade":"Uruguaio"},{"ID":"53","Jogador":"Cristaldo","Time":"Gremio","Liga":"Brasileirao","Posicao":"MEI","Idade":"28","Partidas_Disputadas":"35","Vitorias":"18","Empates":"8","Derrotas":"9","Gols_Marcados":"11","Assistencias":"8","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"3000","Nacionalidade":"Argentino"},{"ID":"54","Jogador":"Villasanti","Time":"Gremio","Liga":"Brasileirao","Posicao":"VOL","Idade":"27","Partidas_Disputadas":"34","Vitorias":"17","Empates":"8","Derrotas":"9","Gols_Marcados":"5","Assistencias":"4","Cartoes_Amarelos":"10","Cartoes_Vermelhos":"0","Minutos_Jogados":"3050","Nacionalidade":"Paraguaio"},{"ID":"55","Jogador":"Pepe","Time":"Gremio","Liga":"Brasileirao","Posicao":"VOL","Idade":"26","Partidas_Disputadas":"30","Vitorias":"15","Empates":"7","Derrotas":"8","Gols_Marcados":"2","Assistencias":"3","Cartoes_Amarelos":"7","Cartoes_Vermelhos":"0","Minutos_Jogados":"2500","Nacionalidade":"Brasileiro"},{"ID":"56","Jogador":"Reinaldo","Time":"Gremio","Liga":"Brasileirao","Posicao":"LAT","Idade":"34","Partidas_Disputadas":"33","Vitorias":"16","Empates":"8","Derrotas":"9","Gols_Marcados":"4","Assistencias":"6","Cartoes_Amarelos":"8","Cartoes_Vermelhos":"1","Minutos_Jogados":"2900","Nacionalidade":"Brasileiro"},{"ID":"57","Jogador":"Kannemann","Time":"Gremio","Liga":"Brasileirao","Posicao":"ZAG","Idade":"33","Partidas_Disputadas":"31","Vitorias":"15","Empates":"7","Derrotas":"9","Gols_Marcados":"1","Assistencias":"0","Cartoes_Amarelos":"12","Cartoes_Vermelhos":"2","Minutos_Jogados":"2750","Nacionalidade":"Argentino"},{"ID":"58","Jogador":"Rodrigo Ely","Time":"Gremio","Liga":"Brasileirao","Posicao":"ZAG","Idade":"30","Partidas_Disputadas":"29","Vitorias":"14","Empates":"7","Derrotas":"8","Gols_Marcados":"2","Assistencias":"0","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"2550","Nacionalidade":"Brasileiro"},{"ID":"59","Jogador":"Marchesin","Time":"Gremio","Liga":"Brasileirao","Posicao":"GOL","Idade":"36","Partidas_Disputadas":"37","Vitorias":"19","Empates":"8","Derrotas":"10","Gols_Marcados":"0","Assistencias":"0","Cartoes_Amarelos":"3","Cartoes_Vermelhos":"0","Minutos_Jogados":"3330","Nacionalidade":"Argentino"},{"ID":"60","Jogador":"Joao Pedro","Time":"Gremio","Liga":"Brasileirao","Posicao":"LAT","Idade":"27","Partidas_Disputadas":"30","Vitorias":"15","Empates":"7","Derrotas":"8","Gols_Marcados":"2","Assistencias":"4","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"2600","Nacionalidade":"Brasileiro"},{"ID":"61","Jogador":"Enner Valencia","Time":"Internacional","Liga":"Brasileirao","Posicao":"ATA","Idade":"34","Partidas_Disputadas":"33","Vitorias":"17","Empates":"8","Derrotas":"8","Gols_Marcados":"15","Assistencias":"4","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"1","Minutos_Jogados":"2850","Nacionalidade":"Equatoriano"},{"ID":"62","Jogador":"Santos Borre","Time":"Internacional","Liga":"Brasileirao","Posicao":"ATA","Idade":"28","Partidas_Disputadas":"30","Vitorias":"15","Empates":"7","Derrotas":"8","Gols_Marcados":"11","Assistencias":"3","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"2400","Nacionalidade":"Colombiano"},{"ID":"63","Jogador":"Alan Patrick","Time":"Internacional","Liga":"Brasileirao","Posicao":"MEI","Idade":"33","Partidas_Disputadas":"35","Vitorias":"18","Empates":"9","Derrotas":"8","Gols_Marcados":"9","Assistencias":"12","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"3050","Nacionalidade":"Brasileiro"},{"ID":"64","Jogador":"Aranguiz","Time":"Internacional","Liga":"Brasileirao","Posicao":"MEI","Idade":"35","Partidas_Disputadas":"28","Vitorias":"14","Empates":"7","Derrotas":"7","Gols_Marcados":"3","Assistencias":"5","Cartoes_Amarelos":"7","Cartoes_Vermelhos":"0","Minutos_Jogados":"2300","Nacionalidade":"Chileno"},{"ID":"65","Jogador":"Bruno Henrique","Time":"Internacional","Liga":"Brasileirao","Posicao":"VOL","Idade":"34","Partidas_Disputadas":"32","Vitorias":"16","Empates":"8","Derrotas":"8","Gols_Marcados":"4","Assistencias":"4","Cartoes_Amarelos":"8","Cartoes_Vermelhos":"0","Minutos_Jogados":"2700","Nacionalidade":"Brasileiro"},{"ID":"66","Jogador":"Rene","Time":"Internacional","Liga":"Brasileirao","Posicao":"LAT","Idade":"31","Partidas_Disputadas":"34","Vitorias":"17","Empates":"8","Derrotas":"9","Gols_Marcados":"1","Assistencias":"5","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"3000","Nacionalidade":"Brasileiro"},{"ID":"67","Jogador":"Mercado","Time":"Internacional","Liga":"Brasileirao","Posicao":"ZAG","Idade":"37","Partidas_Disputadas":"29","Vitorias":"14","Empates":"7","Derrotas":"8","Gols_Marcados":"2","Assistencias":"1","Cartoes_Amarelos":"9","Cartoes_Vermelhos":"1","Minutos_Jogados":"2550","Nacionalidade":"Argentino"},{"ID":"68","Jogador":"Vitao","Time":"Internacional","Liga":"Brasileirao","Posicao":"ZAG","Idade":"24","Partidas_Disputadas":"35","Vitorias":"18","Empates":"9","Derrotas":"8","Gols_Marcados":"3","Assistencias":"0","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"3150","Nacionalidade":"Brasileiro"},{"ID":"69","Jogador":"Rochet","Time":"Internacional","Liga":"Brasileirao","Posicao":"GOL","Idade":"31","Partidas_Disputadas":"36","Vitorias":"18","Empates":"9","Derrotas":"9","Gols_Marcados":"0","Assistencias":"0","Cartoes_Amarelos":"2","Cartoes_Vermelhos":"0","Minutos_Jogados":"3240","Nacionalidade":"Uruguaio"},{"ID":"70","Jogador":"Bustos","Time":"Internacional","Liga":"Brasileirao","Posicao":"LAT","Idade":"26","Partidas_Disputadas":"33","Vitorias":"17","Empates":"8","Derrotas":"8","Gols_Marcados":"2","Assistencias":"6","Cartoes_Amarelos":"7","Cartoes_Vermelhos":"0","Minutos_Jogados":"2950","Nacionalidade":"Argentino"},{"ID":"71","Jogador":"Erling Haaland","Time":"Man City","Liga":"Premier League","Posicao":"ATA","Idade":"23","Partidas_Disputadas":"35","Vitorias":"26","Empates":"6","Derrotas":"3","Gols_Marcados":"32","Assistencias":"6","Cartoes_Amarelos":"3","Cartoes_Vermelhos":"0","Minutos_Jogados":"3050","Nacionalidade":"Norueguês"},{"ID":"72","Jogador":"Phil Foden","Time":"Man City","Liga":"Premier League","Posicao":"MEI","Idade":"23","Partidas_Disputadas":"36","Vitorias":"27","Empates":"6","Derrotas":"3","Gols_Marcados":"18","Assistencias":"12","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"3100","Nacionalidade":"Inglês"},{"ID":"73","Jogador":"Kevin De Bruyne","Time":"Man City","Liga":"Premier League","Posicao":"MEI","Idade":"32","Partidas_Disputadas":"28","Vitorias":"21","Empates":"5","Derrotas":"2","Gols_Marcados":"8","Assistencias":"18","Cartoes_Amarelos":"2","Cartoes_Vermelhos":"0","Minutos_Jogados":"2300","Nacionalidade":"Belga"},{"ID":"74","Jogador":"Bernardo Silva","Time":"Man City","Liga":"Premier League","Posicao":"MEI","Idade":"29","Partidas_Disputadas":"34","Vitorias":"25","Empates":"6","Derrotas":"3","Gols_Marcados":"10","Assistencias":"10","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"2950","Nacionalidade":"Português"},{"ID":"75","Jogador":"Rodri","Time":"Man City","Liga":"Premier League","Posicao":"VOL","Idade":"27","Partidas_Disputadas":"35","Vitorias":"26","Empates":"6","Derrotas":"3","Gols_Marcados":"8","Assistencias":"9","Cartoes_Amarelos":"8","Cartoes_Vermelhos":"1","Minutos_Jogados":"3150","Nacionalidade":"Espanhol"},{"ID":"76","Jogador":"Josko Gvardiol","Time":"Man City","Liga":"Premier League","Posicao":"LAT","Idade":"22","Partidas_Disputadas":"32","Vitorias":"24","Empates":"5","Derrotas":"3","Gols_Marcados":"5","Assistencias":"3","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"2800","Nacionalidade":"Croata"},{"ID":"77","Jogador":"Ruben Dias","Time":"Man City","Liga":"Premier League","Posicao":"ZAG","Idade":"27","Partidas_Disputadas":"33","Vitorias":"25","Empates":"5","Derrotas":"3","Gols_Marcados":"2","Assistencias":"1","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"2950","Nacionalidade":"Português"},{"ID":"78","Jogador":"John Stones","Time":"Man City","Liga":"Premier League","Posicao":"ZAG","Idade":"29","Partidas_Disputadas":"25","Vitorias":"19","Empates":"4","Derrotas":"2","Gols_Marcados":"1","Assistencias":"2","Cartoes_Amarelos":"3","Cartoes_Vermelhos":"0","Minutos_Jogados":"2100","Nacionalidade":"Inglês"},{"ID":"79","Jogador":"Kyle Walker","Time":"Man City","Liga":"Premier League","Posicao":"LAT","Idade":"33","Partidas_Disputadas":"30","Vitorias":"22","Empates":"5","Derrotas":"3","Gols_Marcados":"0","Assistencias":"4","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"2650","Nacionalidade":"Inglês"},{"ID":"80","Jogador":"Ederson","Time":"Man City","Liga":"Premier League","Posicao":"GOL","Idade":"30","Partidas_Disputadas":"37","Vitorias":"28","Empates":"6","Derrotas":"3","Gols_Marcados":"0","Assistencias":"1","Cartoes_Amarelos":"2","Cartoes_Vermelhos":"0","Minutos_Jogados":"3330","Nacionalidade":"Brasileiro"},{"ID":"81","Jogador":"Bukayo Saka","Time":"Arsenal","Liga":"Premier League","Posicao":"ATA","Idade":"22","Partidas_Disputadas":"37","Vitorias":"25","Empates":"6","Derrotas":"6","Gols_Marcados":"16","Assistencias":"12","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"3250","Nacionalidade":"Inglês"},{"ID":"82","Jogador":"Gabriel Martinelli","Time":"Arsenal","Liga":"Premier League","Posicao":"ATA","Idade":"22","Partidas_Disputadas":"34","Vitorias":"23","Empates":"6","Derrotas":"5","Gols_Marcados":"12","Assistencias":"8","Cartoes_Amarelos":"3","Cartoes_Vermelhos":"0","Minutos_Jogados":"2900","Nacionalidade":"Brasileiro"},{"ID":"83","Jogador":"Martin Odegaard","Time":"Arsenal","Liga":"Premier League","Posicao":"MEI","Idade":"25","Partidas_Disputadas":"36","Vitorias":"25","Empates":"6","Derrotas":"5","Gols_Marcados":"10","Assistencias":"14","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"3150","Nacionalidade":"Norueguês"},{"ID":"84","Jogador":"Declan Rice","Time":"Arsenal","Liga":"Premier League","Posicao":"VOL","Idade":"25","Partidas_Disputadas":"38","Vitorias":"26","Empates":"6","Derrotas":"6","Gols_Marcados":"6","Assistencias":"8","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"3400","Nacionalidade":"Inglês"},{"ID":"85","Jogador":"Thomas Partey","Time":"Arsenal","Liga":"Premier League","Posicao":"VOL","Idade":"30","Partidas_Disputadas":"22","Vitorias":"14","Empates":"4","Derrotas":"4","Gols_Marcados":"2","Assistencias":"1","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"1800","Nacionalidade":"Ganês"},{"ID":"86","Jogador":"Oleksandr Zinchenko","Time":"Arsenal","Liga":"Premier League","Posicao":"LAT","Idade":"27","Partidas_Disputadas":"28","Vitorias":"18","Empates":"5","Derrotas":"5","Gols_Marcados":"1","Assistencias":"4","Cartoes_Amarelos":"3","Cartoes_Vermelhos":"0","Minutos_Jogados":"2300","Nacionalidade":"Ucraniano"},{"ID":"87","Jogador":"Gabriel Magalhaes","Time":"Arsenal","Liga":"Premier League","Posicao":"ZAG","Idade":"26","Partidas_Disputadas":"36","Vitorias":"25","Empates":"6","Derrotas":"5","Gols_Marcados":"5","Assistencias":"0","Cartoes_Amarelos":"7","Cartoes_Vermelhos":"0","Minutos_Jogados":"3200","Nacionalidade":"Brasileiro"},{"ID":"88","Jogador":"William Saliba","Time":"Arsenal","Liga":"Premier League","Posicao":"ZAG","Idade":"23","Partidas_Disputadas":"38","Vitorias":"26","Empates":"6","Derrotas":"6","Gols_Marcados":"3","Assistencias":"1","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"3420","Nacionalidade":"Francês"},{"ID":"89","Jogador":"Ben White","Time":"Arsenal","Liga":"Premier League","Posicao":"LAT","Idade":"26","Partidas_Disputadas":"35","Vitorias":"24","Empates":"6","Derrotas":"5","Gols_Marcados":"4","Assistencias":"6","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"3100","Nacionalidade":"Inglês"},{"ID":"90","Jogador":"David Raya","Time":"Arsenal","Liga":"Premier League","Posicao":"GOL","Idade":"28","Partidas_Disputadas":"38","Vitorias":"26","Empates":"6","Derrotas":"6","Gols_Marcados":"0","Assistencias":"0","Cartoes_Amarelos":"2","Cartoes_Vermelhos":"0","Minutos_Jogados":"3420","Nacionalidade":"Espanhol"},{"ID":"91","Jogador":"Vinicius Junior","Time":"Real Madrid","Liga":"La Liga","Posicao":"ATA","Idade":"23","Partidas_Disputadas":"34","Vitorias":"25","Empates":"6","Derrotas":"3","Gols_Marcados":"22","Assistencias":"11","Cartoes_Amarelos":"8","Cartoes_Vermelhos":"0","Minutos_Jogados":"2950","Nacionalidade":"Brasileiro"},{"ID":"92","Jogador":"Kylian Mbappe","Time":"Real Madrid","Liga":"La Liga","Posicao":"ATA","Idade":"25","Partidas_Disputadas":"36","Vitorias":"27","Empates":"6","Derrotas":"3","Gols_Marcados":"30","Assistencias":"9","Cartoes_Amarelos":"3","Cartoes_Vermelhos":"0","Minutos_Jogados":"3150","Nacionalidade":"Francês"},{"ID":"93","Jogador":"Rodrygo","Time":"Real Madrid","Liga":"La Liga","Posicao":"ATA","Idade":"23","Partidas_Disputadas":"35","Vitorias":"26","Empates":"6","Derrotas":"3","Gols_Marcados":"15","Assistencias":"10","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"2850","Nacionalidade":"Brasileiro"},{"ID":"94","Jogador":"Jude Bellingham","Time":"Real Madrid","Liga":"La Liga","Posicao":"MEI","Idade":"20","Partidas_Disputadas":"34","Vitorias":"25","Empates":"6","Derrotas":"3","Gols_Marcados":"20","Assistencias":"12","Cartoes_Amarelos":"7","Cartoes_Vermelhos":"1","Minutos_Jogados":"3050","Nacionalidade":"Inglês"},{"ID":"95","Jogador":"Federico Valverde","Time":"Real Madrid","Liga":"La Liga","Posicao":"MEI","Idade":"25","Partidas_Disputadas":"37","Vitorias":"28","Empates":"6","Derrotas":"3","Gols_Marcados":"8","Assistencias":"7","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"3250","Nacionalidade":"Uruguaio"},{"ID":"96","Jogador":"Eduardo Camavinga","Time":"Real Madrid","Liga":"La Liga","Posicao":"VOL","Idade":"21","Partidas_Disputadas":"33","Vitorias":"24","Empates":"6","Derrotas":"3","Gols_Marcados":"3","Assistencias":"5","Cartoes_Amarelos":"9","Cartoes_Vermelhos":"0","Minutos_Jogados":"2700","Nacionalidade":"Francês"},{"ID":"97","Jogador":"Ferland Mendy","Time":"Real Madrid","Liga":"La Liga","Posicao":"LAT","Idade":"28","Partidas_Disputadas":"30","Vitorias":"22","Empates":"5","Derrotas":"3","Gols_Marcados":"1","Assistencias":"2","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"2500","Nacionalidade":"Francês"},{"ID":"98","Jogador":"Antonio Rudiger","Time":"Real Madrid","Liga":"La Liga","Posicao":"ZAG","Idade":"31","Partidas_Disputadas":"35","Vitorias":"26","Empates":"6","Derrotas":"3","Gols_Marcados":"3","Assistencias":"1","Cartoes_Amarelos":"8","Cartoes_Vermelhos":"0","Minutos_Jogados":"3100","Nacionalidade":"Alemão"},{"ID":"99","Jogador":"Eder Militao","Time":"Real Madrid","Liga":"La Liga","Posicao":"ZAG","Idade":"26","Partidas_Disputadas":"28","Vitorias":"20","Empates":"5","Derrotas":"3","Gols_Marcados":"2","Assistencias":"1","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"2450","Nacionalidade":"Brasileiro"},{"ID":"100","Jogador":"Thibaut Courtois","Time":"Real Madrid","Liga":"La Liga","Posicao":"GOL","Idade":"32","Partidas_Disputadas":"38","Vitorias":"29","Empates":"6","Derrotas":"3","Gols_Marcados":"0","Assistencias":"0","Cartoes_Amarelos":"1","Cartoes_Vermelhos":"0","Minutos_Jogados":"3420","Nacionalidade":"Belga"},{"ID":"101","Jogador":"Robert Lewandowski","Time":"Barcelona","Liga":"La Liga","Posicao":"ATA","Idade":"35","Partidas_Disputadas":"35","Vitorias":"22","Empates":"7","Derrotas":"6","Gols_Marcados":"21","Assistencias":"6","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"3050","Nacionalidade":"Polonês"},{"ID":"102","Jogador":"Lamine Yamal","Time":"Barcelona","Liga":"La Liga","Posicao":"ATA","Idade":"16","Partidas_Disputadas":"36","Vitorias":"23","Empates":"7","Derrotas":"6","Gols_Marcados":"10","Assistencias":"12","Cartoes_Amarelos":"3","Cartoes_Vermelhos":"0","Minutos_Jogados":"2800","Nacionalidade":"Espanhol"},{"ID":"103","Jogador":"Raphinha","Time":"Barcelona","Liga":"La Liga","Posicao":"ATA","Idade":"27","Partidas_Disputadas":"33","Vitorias":"20","Empates":"7","Derrotas":"6","Gols_Marcados":"12","Assistencias":"10","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"2750","Nacionalidade":"Brasileiro"},{"ID":"104","Jogador":"Pedri","Time":"Barcelona","Liga":"La Liga","Posicao":"MEI","Idade":"21","Partidas_Disputadas":"28","Vitorias":"17","Empates":"6","Derrotas":"5","Gols_Marcados":"5","Assistencias":"8","Cartoes_Amarelos":"2","Cartoes_Vermelhos":"0","Minutos_Jogados":"2300","Nacionalidade":"Espanhol"},{"ID":"105","Jogador":"Gavi","Time":"Barcelona","Liga":"La Liga","Posicao":"MEI","Idade":"19","Partidas_Disputadas":"30","Vitorias":"19","Empates":"6","Derrotas":"5","Gols_Marcados":"4","Assistencias":"5","Cartoes_Amarelos":"10","Cartoes_Vermelhos":"1","Minutos_Jogados":"2600","Nacionalidade":"Espanhol"},{"ID":"106","Jogador":"Frenkie De Jong","Time":"Barcelona","Liga":"La Liga","Posicao":"VOL","Idade":"27","Partidas_Disputadas":"32","Vitorias":"20","Empates":"6","Derrotas":"6","Gols_Marcados":"3","Assistencias":"6","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"2850","Nacionalidade":"Holandês"},{"ID":"107","Jogador":"Alejandro Balde","Time":"Barcelona","Liga":"La Liga","Posicao":"LAT","Idade":"20","Partidas_Disputadas":"34","Vitorias":"21","Empates":"7","Derrotas":"6","Gols_Marcados":"2","Assistencias":"5","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"2950","Nacionalidade":"Espanhol"},{"ID":"108","Jogador":"Ronald Araujo","Time":"Barcelona","Liga":"La Liga","Posicao":"ZAG","Idade":"25","Partidas_Disputadas":"33","Vitorias":"20","Empates":"7","Derrotas":"6","Gols_Marcados":"4","Assistencias":"1","Cartoes_Amarelos":"9","Cartoes_Vermelhos":"1","Minutos_Jogados":"2900","Nacionalidade":"Uruguaio"},{"ID":"109","Jogador":"Pau Cubarsi","Time":"Barcelona","Liga":"La Liga","Posicao":"ZAG","Idade":"17","Partidas_Disputadas":"25","Vitorias":"16","Empates":"5","Derrotas":"4","Gols_Marcados":"1","Assistencias":"1","Cartoes_Amarelos":"3","Cartoes_Vermelhos":"0","Minutos_Jogados":"2150","Nacionalidade":"Espanhol"},{"ID":"110","Jogador":"Marc-Andre Ter Stegen","Time":"Barcelona","Liga":"La Liga","Posicao":"GOL","Idade":"32","Partidas_Disputadas":"38","Vitorias":"24","Empates":"8","Derrotas":"6","Gols_Marcados":"0","Assistencias":"0","Cartoes_Amarelos":"2","Cartoes_Vermelhos":"0","Minutos_Jogados":"3420","Nacionalidade":"Alemão"},{"ID":"111","Jogador":"Antoine Griezmann","Time":"Atletico Madrid","Liga":"La Liga","Posicao":"ATA","Idade":"33","Partidas_Disputadas":"36","Vitorias":"21","Empates":"8","Derrotas":"7","Gols_Marcados":"18","Assistencias":"12","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"3150","Nacionalidade":"Francês"},{"ID":"112","Jogador":"Alvaro Morata","Time":"Atletico Madrid","Liga":"La Liga","Posicao":"ATA","Idade":"31","Partidas_Disputadas":"34","Vitorias":"20","Empates":"7","Derrotas":"7","Gols_Marcados":"16","Assistencias":"4","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"2800","Nacionalidade":"Espanhol"},{"ID":"113","Jogador":"Angel Correa","Time":"Atletico Madrid","Liga":"La Liga","Posicao":"ATA","Idade":"29","Partidas_Disputadas":"32","Vitorias":"18","Empates":"7","Derrotas":"7","Gols_Marcados":"9","Assistencias":"6","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"2200","Nacionalidade":"Argentino"},{"ID":"114","Jogador":"Koke","Time":"Atletico Madrid","Liga":"La Liga","Posicao":"MEI","Idade":"32","Partidas_Disputadas":"35","Vitorias":"20","Empates":"8","Derrotas":"7","Gols_Marcados":"3","Assistencias":"8","Cartoes_Amarelos":"9","Cartoes_Vermelhos":"0","Minutos_Jogados":"3000","Nacionalidade":"Espanhol"},{"ID":"115","Jogador":"Rodrigo De Paul","Time":"Atletico Madrid","Liga":"La Liga","Posicao":"MEI","Idade":"30","Partidas_Disputadas":"34","Vitorias":"20","Empates":"7","Derrotas":"7","Gols_Marcados":"5","Assistencias":"9","Cartoes_Amarelos":"11","Cartoes_Vermelhos":"1","Minutos_Jogados":"2900","Nacionalidade":"Argentino"},{"ID":"116","Jogador":"Marcos Llorente","Time":"Atletico Madrid","Liga":"La Liga","Posicao":"MEI","Idade":"29","Partidas_Disputadas":"36","Vitorias":"21","Empates":"8","Derrotas":"7","Gols_Marcados":"7","Assistencias":"6","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"3050","Nacionalidade":"Espanhol"},{"ID":"117","Jogador":"Samuel Lino","Time":"Atletico Madrid","Liga":"La Liga","Posicao":"LAT","Idade":"24","Partidas_Disputadas":"33","Vitorias":"19","Empates":"7","Derrotas":"7","Gols_Marcados":"6","Assistencias":"7","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"2850","Nacionalidade":"Brasileiro"},{"ID":"118","Jogador":"Jose Maria Gimenez","Time":"Atletico Madrid","Liga":"La Liga","Posicao":"ZAG","Idade":"29","Partidas_Disputadas":"28","Vitorias":"16","Empates":"6","Derrotas":"6","Gols_Marcados":"2","Assistencias":"1","Cartoes_Amarelos":"8","Cartoes_Vermelhos":"1","Minutos_Jogados":"2450","Nacionalidade":"Uruguaio"},{"ID":"119","Jogador":"Axel Witsel","Time":"Atletico Madrid","Liga":"La Liga","Posicao":"ZAG","Idade":"35","Partidas_Disputadas":"35","Vitorias":"21","Empates":"7","Derrotas":"7","Gols_Marcados":"3","Assistencias":"0","Cartoes_Amarelos":"7","Cartoes_Vermelhos":"0","Minutos_Jogados":"3050","Nacionalidade":"Belga"},{"ID":"120","Jogador":"Jan Oblak","Time":"Atletico Madrid","Liga":"La Liga","Posicao":"GOL","Idade":"31","Partidas_Disputadas":"38","Vitorias":"23","Empates":"8","Derrotas":"7","Gols_Marcados":"0","Assistencias":"0","Cartoes_Amarelos":"1","Cartoes_Vermelhos":"0","Minutos_Jogados":"3420","Nacionalidade":"Esloveno"},{"ID":"121","Jogador":"Lautaro Martinez","Time":"Inter Milan","Liga":"Serie A","Posicao":"ATA","Idade":"26","Partidas_Disputadas":"35","Vitorias":"26","Empates":"6","Derrotas":"3","Gols_Marcados":"25","Assistencias":"5","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"3100","Nacionalidade":"Argentino"},{"ID":"122","Jogador":"Marcus Thuram","Time":"Inter Milan","Liga":"Serie A","Posicao":"ATA","Idade":"26","Partidas_Disputadas":"34","Vitorias":"25","Empates":"6","Derrotas":"3","Gols_Marcados":"14","Assistencias":"10","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"2900","Nacionalidade":"Francês"},{"ID":"123","Jogador":"Nicolo Barella","Time":"Inter Milan","Liga":"Serie A","Posicao":"MEI","Idade":"27","Partidas_Disputadas":"36","Vitorias":"27","Empates":"6","Derrotas":"3","Gols_Marcados":"6","Assistencias":"9","Cartoes_Amarelos":"8","Cartoes_Vermelhos":"0","Minutos_Jogados":"3150","Nacionalidade":"Italiano"},{"ID":"124","Jogador":"Hakan Calhanoglu","Time":"Inter Milan","Liga":"Serie A","Posicao":"MEI","Idade":"30","Partidas_Disputadas":"35","Vitorias":"26","Empates":"6","Derrotas":"3","Gols_Marcados":"12","Assistencias":"6","Cartoes_Amarelos":"7","Cartoes_Vermelhos":"0","Minutos_Jogados":"3050","Nacionalidade":"Turco"},{"ID":"125","Jogador":"Henrikh Mkhitaryan","Time":"Inter Milan","Liga":"Serie A","Posicao":"MEI","Idade":"35","Partidas_Disputadas":"34","Vitorias":"25","Empates":"6","Derrotas":"3","Gols_Marcados":"5","Assistencias":"8","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"2850","Nacionalidade":"Armênio"},{"ID":"126","Jogador":"Federico Dimarco","Time":"Inter Milan","Liga":"Serie A","Posicao":"LAT","Idade":"26","Partidas_Disputadas":"33","Vitorias":"24","Empates":"6","Derrotas":"3","Gols_Marcados":"6","Assistencias":"9","Cartoes_Amarelos":"3","Cartoes_Vermelhos":"0","Minutos_Jogados":"2700","Nacionalidade":"Italiano"},{"ID":"127","Jogador":"Alessandro Bastoni","Time":"Inter Milan","Liga":"Serie A","Posicao":"ZAG","Idade":"25","Partidas_Disputadas":"34","Vitorias":"25","Empates":"6","Derrotas":"3","Gols_Marcados":"2","Assistencias":"4","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"2950","Nacionalidade":"Italiano"},{"ID":"128","Jogador":"Francesco Acerbi","Time":"Inter Milan","Liga":"Serie A","Posicao":"ZAG","Idade":"36","Partidas_Disputadas":"30","Vitorias":"22","Empates":"5","Derrotas":"3","Gols_Marcados":"1","Assistencias":"0","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"2600","Nacionalidade":"Italiano"},{"ID":"129","Jogador":"Benjamin Pavard","Time":"Inter Milan","Liga":"Serie A","Posicao":"ZAG","Idade":"28","Partidas_Disputadas":"32","Vitorias":"24","Empates":"5","Derrotas":"3","Gols_Marcados":"1","Assistencias":"2","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"2750","Nacionalidade":"Francês"},{"ID":"130","Jogador":"Yann Sommer","Time":"Inter Milan","Liga":"Serie A","Posicao":"GOL","Idade":"35","Partidas_Disputadas":"38","Vitorias":"29","Empates":"6","Derrotas":"3","Gols_Marcados":"0","Assistencias":"0","Cartoes_Amarelos":"1","Cartoes_Vermelhos":"0","Minutos_Jogados":"3420","Nacionalidade":"Suíço"},{"ID":"131","Jogador":"Harry Kane","Time":"Bayern Munich","Liga":"Bundesliga","Posicao":"ATA","Idade":"30","Partidas_Disputadas":"33","Vitorias":"23","Empates":"5","Derrotas":"5","Gols_Marcados":"36","Assistencias":"10","Cartoes_Amarelos":"3","Cartoes_Vermelhos":"0","Minutos_Jogados":"2950","Nacionalidade":"Inglês"},{"ID":"132","Jogador":"Jamal Musiala","Time":"Bayern Munich","Liga":"Bundesliga","Posicao":"MEI","Idade":"21","Partidas_Disputadas":"30","Vitorias":"21","Empates":"4","Derrotas":"5","Gols_Marcados":"12","Assistencias":"9","Cartoes_Amarelos":"2","Cartoes_Vermelhos":"0","Minutos_Jogados":"2600","Nacionalidade":"Alemão"},{"ID":"133","Jogador":"Leroy Sane","Time":"Bayern Munich","Liga":"Bundesliga","Posicao":"ATA","Idade":"28","Partidas_Disputadas":"31","Vitorias":"21","Empates":"5","Derrotas":"5","Gols_Marcados":"10","Assistencias":"12","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"2700","Nacionalidade":"Alemão"},{"ID":"134","Jogador":"Joshua Kimmich","Time":"Bayern Munich","Liga":"Bundesliga","Posicao":"VOL","Idade":"29","Partidas_Disputadas":"32","Vitorias":"22","Empates":"5","Derrotas":"5","Gols_Marcados":"4","Assistencias":"8","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"1","Minutos_Jogados":"2850","Nacionalidade":"Alemão"},{"ID":"135","Jogador":"Leon Goretzka","Time":"Bayern Munich","Liga":"Bundesliga","Posicao":"VOL","Idade":"29","Partidas_Disputadas":"29","Vitorias":"19","Empates":"5","Derrotas":"5","Gols_Marcados":"5","Assistencias":"4","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"2400","Nacionalidade":"Alemão"},{"ID":"136","Jogador":"Alphonso Davies","Time":"Bayern Munich","Liga":"Bundesliga","Posicao":"LAT","Idade":"23","Partidas_Disputadas":"30","Vitorias":"20","Empates":"5","Derrotas":"5","Gols_Marcados":"3","Assistencias":"6","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"2650","Nacionalidade":"Canadense"},{"ID":"137","Jogador":"Matthijs De Ligt","Time":"Bayern Munich","Liga":"Bundesliga","Posicao":"ZAG","Idade":"24","Partidas_Disputadas":"28","Vitorias":"19","Empates":"4","Derrotas":"5","Gols_Marcados":"3","Assistencias":"0","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"2450","Nacionalidade":"Holandês"},{"ID":"138","Jogador":"Dayot Upamecano","Time":"Bayern Munich","Liga":"Bundesliga","Posicao":"ZAG","Idade":"25","Partidas_Disputadas":"27","Vitorias":"18","Empates":"4","Derrotas":"5","Gols_Marcados":"1","Assistencias":"0","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"1","Minutos_Jogados":"2300","Nacionalidade":"Francês"},{"ID":"139","Jogador":"Noussair Mazraoui","Time":"Bayern Munich","Liga":"Bundesliga","Posicao":"LAT","Idade":"26","Partidas_Disputadas":"25","Vitorias":"16","Empates":"4","Derrotas":"5","Gols_Marcados":"0","Assistencias":"4","Cartoes_Amarelos":"3","Cartoes_Vermelhos":"0","Minutos_Jogados":"2100","Nacionalidade":"Marroquino"},{"ID":"140","Jogador":"Manuel Neuer","Time":"Bayern Munich","Liga":"Bundesliga","Posicao":"GOL","Idade":"38","Partidas_Disputadas":"34","Vitorias":"24","Empates":"5","Derrotas":"5","Gols_Marcados":"0","Assistencias":"0","Cartoes_Amarelos":"1","Cartoes_Vermelhos":"0","Minutos_Jogados":"3060","Nacionalidade":"Alemão"},{"ID":"141","Jogador":"Goncalo Ramos","Time":"PSG","Liga":"Ligue 1","Posicao":"ATA","Idade":"22","Partidas_Disputadas":"30","Vitorias":"20","Empates":"7","Derrotas":"3","Gols_Marcados":"14","Assistencias":"3","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"2400","Nacionalidade":"Português"},{"ID":"142","Jogador":"Ousmane Dembele","Time":"PSG","Liga":"Ligue 1","Posicao":"ATA","Idade":"27","Partidas_Disputadas":"32","Vitorias":"22","Empates":"7","Derrotas":"3","Gols_Marcados":"8","Assistencias":"15","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"2750","Nacionalidade":"Francês"},{"ID":"143","Jogador":"Marco Asensio","Time":"PSG","Liga":"Ligue 1","Posicao":"MEI","Idade":"28","Partidas_Disputadas":"28","Vitorias":"19","Empates":"6","Derrotas":"3","Gols_Marcados":"7","Assistencias":"6","Cartoes_Amarelos":"2","Cartoes_Vermelhos":"0","Minutos_Jogados":"2100","Nacionalidade":"Espanhol"},{"ID":"144","Jogador":"Vitinha","Time":"PSG","Liga":"Ligue 1","Posicao":"MEI","Idade":"24","Partidas_Disputadas":"34","Vitorias":"23","Empates":"8","Derrotas":"3","Gols_Marcados":"9","Assistencias":"7","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"2950","Nacionalidade":"Português"},{"ID":"145","Jogador":"Warren Zaire-Emery","Time":"PSG","Liga":"Ligue 1","Posicao":"MEI","Idade":"18","Partidas_Disputadas":"33","Vitorias":"22","Empates":"8","Derrotas":"3","Gols_Marcados":"5","Assistencias":"6","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"2850","Nacionalidade":"Francês"},{"ID":"146","Jogador":"Nuno Mendes","Time":"PSG","Liga":"Ligue 1","Posicao":"LAT","Idade":"21","Partidas_Disputadas":"25","Vitorias":"17","Empates":"5","Derrotas":"3","Gols_Marcados":"2","Assistencias":"4","Cartoes_Amarelos":"4","Cartoes_Vermelhos":"0","Minutos_Jogados":"2150","Nacionalidade":"Português"},{"ID":"147","Jogador":"Marquinhos","Time":"PSG","Liga":"Ligue 1","Posicao":"ZAG","Idade":"30","Partidas_Disputadas":"32","Vitorias":"22","Empates":"7","Derrotas":"3","Gols_Marcados":"1","Assistencias":"2","Cartoes_Amarelos":"5","Cartoes_Vermelhos":"0","Minutos_Jogados":"2800","Nacionalidade":"Brasileiro"},{"ID":"148","Jogador":"Milan Skriniar","Time":"PSG","Liga":"Ligue 1","Posicao":"ZAG","Idade":"29","Partidas_Disputadas":"29","Vitorias":"19","Empates":"7","Derrotas":"3","Gols_Marcados":"1","Assistencias":"0","Cartoes_Amarelos":"6","Cartoes_Vermelhos":"0","Minutos_Jogados":"2500","Nacionalidade":"Eslovaco"},{"ID":"149","Jogador":"Achraf Hakimi","Time":"PSG","Liga":"Ligue 1","Posicao":"LAT","Idade":"25","Partidas_Disputadas":"33","Vitorias":"22","Empates":"8","Derrotas":"3","Gols_Marcados":"6","Assistencias":"8","Cartoes_Amarelos":"7","Cartoes_Vermelhos":"1","Minutos_Jogados":"2900","Nacionalidade":"Marroquino"},{"ID":"150","Jogador":"Gianluigi Donnarumma","Time":"PSG","Liga":"Ligue 1","Posicao":"GOL","Idade":"25","Partidas_Disputadas":"34","Vitorias":"23","Empates":"8","Derrotas":"3","Gols_Marcados":"0","Assistencias":"0","Cartoes_Amarelos":"3","Cartoes_Vermelhos":"0","Minutos_Jogados":"3060","Nacionalidade":"Italiano"}];
+
+const DATA = RAW.map(r => ({...r,
+  Idade: parseInt(r.Idade)||0,
+  Partidas_Disputadas: parseInt(r.Partidas_Disputadas)||0,
+  Vitorias: parseInt(r.Vitorias)||0,
+  Empates: parseInt(r.Empates)||0,
+  Derrotas: parseInt(r.Derrotas)||0,
+  Gols_Marcados: parseInt(r.Gols_Marcados)||0,
+  Assistencias: parseInt(r.Assistencias)||0,
+  Cartoes_Amarelos: parseInt(r.Cartoes_Amarelos)||0,
+  Cartoes_Vermelhos: parseInt(r.Cartoes_Vermelhos)||0,
+  Minutos_Jogados: parseInt(r.Minutos_Jogados)||0,
+}));
+
+// ──────────────────────────────────────────────
+//  GLOBALS
+// ──────────────────────────────────────────────
+const LEAGUES = ['Todos', ...new Set(DATA.map(d=>d.Liga))];
+const LEAGUE_COLORS = {
+  'Brasileirao': '#00e676',
+  'Premier League': '#6200ea',
+  'La Liga': '#ff6d00',
+  'Serie A': '#00b0ff',
+  'Bundesliga': '#ffd600',
+  'Ligue 1': '#ff1744',
+};
+const POS_NAMES = {ATA:'Atacante',MEI:'Meia',VOL:'Volante',ZAG:'Zagueiro',LAT:'Lateral',GOL:'Goleiro'};
+
+let activeLeague = 'Todos';
+let sortCol = 'Gols_Marcados';
+let sortDir = -1;
+let currentPage = 1;
+const PER_PAGE = 20;
+
+// ──────────────────────────────────────────────
+//  COUNTERS
+// ──────────────────────────────────────────────
+function animateCounter(el, target, duration=1600) {
+  let start = 0;
+  const step = target / (duration / 16);
+  const timer = setInterval(() => {
+    start = Math.min(start + step, target);
+    el.textContent = Math.round(start).toLocaleString('pt-BR');
+    if(start >= target) clearInterval(timer);
+  }, 16);
+}
+
+function initCounters() {
+  const totalGoals = DATA.reduce((s,d) => s + d.Gols_Marcados, 0);
+  const totalAssists = DATA.reduce((s,d) => s + d.Assistencias, 0);
+  const leagues = new Set(DATA.map(d=>d.Liga)).size;
+  const clubs = new Set(DATA.map(d=>d.Time)).size;
+  const nats = new Set(DATA.map(d=>d.Nacionalidade)).size;
+  animateCounter(document.getElementById('cnt-players'), DATA.length);
+  animateCounter(document.getElementById('cnt-goals'), totalGoals);
+  animateCounter(document.getElementById('cnt-assists'), totalAssists);
+  animateCounter(document.getElementById('cnt-leagues'), leagues);
+  animateCounter(document.getElementById('cnt-clubs'), clubs);
+  animateCounter(document.getElementById('cnt-nat'), nats);
+}
+
+// ──────────────────────────────────────────────
+//  LEAGUE TABS
+// ──────────────────────────────────────────────
+function buildTabs() {
+  const el = document.getElementById('leagueTabs');
+  LEAGUES.forEach(l => {
+    const btn = document.createElement('button');
+    btn.className = 'tab' + (l==='Todos'?' active':'');
+    btn.textContent = l;
+    btn.onclick = () => {
+      activeLeague = l;
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      btn.classList.add('active');
+      currentPage = 1;
+      renderTable();
+    };
+    el.appendChild(btn);
+  });
+}
+
+// ──────────────────────────────────────────────
+//  TABLE
+// ──────────────────────────────────────────────
+function getFiltered() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const pos = document.getElementById('posFilter').value;
+  const sf = document.getElementById('sortField').value;
+  sortCol = sf;
+
+  return DATA
+    .filter(d => {
+      if(activeLeague !== 'Todos' && d.Liga !== activeLeague) return false;
+      if(pos && d.Posicao !== pos) return false;
+      if(q && !d.Jogador.toLowerCase().includes(q) && !d.Time.toLowerCase().includes(q)) return false;
+      return true;
+    })
+    .sort((a,b) => b[sortCol] - a[sortCol]);
+}
+
+const MAX_GOALS = Math.max(...DATA.map(d=>d.Gols_Marcados));
+const MAX_ASSISTS = Math.max(...DATA.map(d=>d.Assistencias));
+const MAX_MINS = Math.max(...DATA.map(d=>d.Minutos_Jogados));
+
+function renderTable() {
+  const filtered = getFiltered();
+  const tbody = document.getElementById('tableBody');
+  const noR = document.getElementById('noResults');
+  const total = filtered.length;
+  const totalPages = Math.ceil(total / PER_PAGE);
+  if(currentPage > totalPages) currentPage = 1;
+  const start = (currentPage-1)*PER_PAGE;
+  const slice = filtered.slice(start, start+PER_PAGE);
+
+  tbody.innerHTML = '';
+  if(!slice.length) { noR.style.display='block'; } else { noR.style.display='none'; }
+
+  slice.forEach((d,i) => {
+    const rank = start+i+1;
+    const rankClass = rank===1?'gold':rank===2?'silver':rank===3?'bronze':'';
+    const wr = d.Partidas_Disputadas ? Math.round(d.Vitorias/d.Partidas_Disputadas*100) : 0;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="td-rank ${rankClass}">${rank}</td>
+      <td><div class="player-name">${d.Jogador}</div><div class="team-name">${d.Time}</div></td>
+      <td><span style="color:${LEAGUE_COLORS[d.Liga]||'#aaa'};font-weight:700;font-size:.8rem">${d.Liga}</span></td>
+      <td>${d.Liga}</td>
+      <td><span class="pos-badge pos-${d.Posicao}">${d.Posicao}</span></td>
+      <td>${d.Idade||'—'}</td>
+      <td>${d.Partidas_Disputadas}</td>
+      <td>
+        <div class="stat-bar-wrap">
+          <div class="stat-bar"><div class="stat-bar-fill fill-green" style="width:${(d.Gols_Marcados/MAX_GOALS*100).toFixed(1)}%"></div></div>
+          <span class="stat-val">${d.Gols_Marcados}</span>
+        </div>
+      </td>
+      <td>
+        <div class="stat-bar-wrap">
+          <div class="stat-bar"><div class="stat-bar-fill fill-blue" style="width:${(d.Assistencias/MAX_ASSISTS*100).toFixed(1)}%"></div></div>
+          <span class="stat-val">${d.Assistencias}</span>
+        </div>
+      </td>
+      <td><span style="color:var(--accent)">${d.Vitorias}</span><span style="color:var(--muted)">/${d.Empates}/${d.Derrotas}</span></td>
+      <td>🟡${d.Cartoes_Amarelos} 🔴${d.Cartoes_Vermelhos}</td>
+      <td>
+        <div class="stat-bar-wrap">
+          <div class="stat-bar"><div class="stat-bar-fill fill-yellow" style="width:${(d.Minutos_Jogados/MAX_MINS*100).toFixed(1)}%"></div></div>
+          <span class="stat-val" style="min-width:42px">${d.Minutos_Jogados.toLocaleString()}'</span>
+        </div>
+      </td>
+      <td style="color:var(--muted);font-size:.8rem">${d.Nacionalidade}</td>`;
+    // hide liga col (duplicate)
+    tr.querySelectorAll('td')[2].style.display='none';
+    tbody.appendChild(tr);
+  });
+
+  // Pagination
+  document.getElementById('pageInfo').textContent = `Mostrando ${start+1}–${Math.min(start+PER_PAGE,total)} de ${total}`;
+  const pageBtns = document.getElementById('pageBtns');
+  pageBtns.innerHTML = '';
+  const makeBtn = (label, page, disabled=false) => {
+    const b = document.createElement('button');
+    b.className = 'page-btn' + (page===currentPage?' active':'');
+    b.textContent = label;
+    b.disabled = disabled;
+    b.onclick = () => { currentPage=page; renderTable(); };
+    return b;
+  };
+  pageBtns.appendChild(makeBtn('‹', currentPage-1, currentPage<=1));
+  for(let p=1;p<=totalPages;p++){
+    if(totalPages<=7||p===1||p===totalPages||Math.abs(p-currentPage)<=1){
+      pageBtns.appendChild(makeBtn(p,p));
+    } else if(Math.abs(p-currentPage)===2) {
+      const sp=document.createElement('span');sp.textContent='…';sp.style.cssText='color:var(--muted);padding:0 4px;line-height:34px';pageBtns.appendChild(sp);
+    }
+  }
+  pageBtns.appendChild(makeBtn('›', currentPage+1, currentPage>=totalPages));
+}
+
+// ──────────────────────────────────────────────
+//  TOP SCORERS / ASSISTENTES
+// ──────────────────────────────────────────────
+function buildPodium(containerId, field, labelText) {
+  const sorted = [...DATA].sort((a,b) => b[field]-a[field]).slice(0,6);
+  const container = document.getElementById(containerId);
+  sorted.forEach((d,i) => {
+    const rankClass = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
+    const wr = d.Partidas_Disputadas?Math.round(d.Vitorias/d.Partidas_Disputadas*100):0;
+    const card = document.createElement('div');
+    card.className = `player-card ${rankClass}`;
+    card.innerHTML = `
+      <div class="card-top">
+        <div>
+          <div class="card-rank-num">${String(i+1).padStart(2,'0')}</div>
+          <div class="card-player">${d.Jogador}</div>
+          <div class="card-meta">${d.Time} · <span class="pos-badge pos-${d.Posicao}">${d.Posicao}</span></div>
+        </div>
+        <div>
+          <div class="card-stat-main">${d[field]}</div>
+          <div class="card-stat-label">${labelText}</div>
+        </div>
+      </div>
+      <div class="card-stats-row">
+        <div class="mini-stat"><div class="mini-val">${d.Partidas_Disputadas}</div><div class="mini-label">Jogos</div></div>
+        <div class="mini-stat"><div class="mini-val">${wr}%</div><div class="mini-label">Win Rate</div></div>
+        <div class="mini-stat"><div class="mini-val">${d.Gols_Marcados}+${d.Assistencias}</div><div class="mini-label">G+A</div></div>
+        <div class="mini-stat"><div class="mini-val" style="color:var(--accent2)">${d.Liga.split(' ')[0]}</div><div class="mini-label">Liga</div></div>
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+// ──────────────────────────────────────────────
+//  CHARTS
+// ──────────────────────────────────────────────
+Chart.defaults.color = '#5a7a9a';
+Chart.defaults.borderColor = '#1e3048';
+Chart.defaults.font.family = "'Barlow', sans-serif";
+
+function buildCharts() {
+  const ligaNames = Object.keys(LEAGUE_COLORS);
+  const ligaGoals = ligaNames.map(l => DATA.filter(d=>d.Liga===l).reduce((s,d)=>s+d.Gols_Marcados,0));
+  const ligaAssists = ligaNames.map(l => DATA.filter(d=>d.Liga===l).reduce((s,d)=>s+d.Assistencias,0));
+  const ligaColors = ligaNames.map(l=>LEAGUE_COLORS[l]);
+
+  new Chart(document.getElementById('chartGoalsLeague'), {
+    type: 'bar',
+    data: { labels: ligaNames, datasets: [{ data: ligaGoals, backgroundColor: ligaColors, borderRadius: 6, borderSkipped: false }] },
+    options: { plugins:{legend:{display:false}}, scales:{y:{grid:{color:'#1e3048'}},x:{grid:{display:false}}}, responsive:true, maintainAspectRatio:false }
+  });
+
+  new Chart(document.getElementById('chartAssistsLeague'), {
+    type: 'bar',
+    data: { labels: ligaNames, datasets: [{ data: ligaAssists, backgroundColor: ligaColors, borderRadius: 6, borderSkipped: false }] },
+    options: { plugins:{legend:{display:false}}, scales:{y:{grid:{color:'#1e3048'}},x:{grid:{display:false}}}, responsive:true, maintainAspectRatio:false }
+  });
+
+  const positions = ['ATA','MEI','VOL','ZAG','LAT','GOL'];
+  const posCounts = positions.map(p => DATA.filter(d=>d.Posicao===p).length);
+  const posColors = ['#ff6d00','#00b0ff','#ce93d8','#00e676','#ffd600','#ff6090'];
+  new Chart(document.getElementById('chartPositions'), {
+    type: 'doughnut',
+    data: { labels: positions.map(p=>POS_NAMES[p]), datasets:[{ data: posCounts, backgroundColor: posColors, borderWidth: 2, borderColor: '#0d1520' }] },
+    options: { plugins:{legend:{position:'bottom',labels:{padding:16,font:{size:12}}}}, responsive:true, maintainAspectRatio:false, cutout:'65%' }
+  });
+
+  const avgAges = positions.map(p => {
+    const ps = DATA.filter(d=>d.Posicao===p&&d.Idade>0);
+    return ps.length ? (ps.reduce((s,d)=>s+d.Idade,0)/ps.length).toFixed(1) : 0;
+  });
+  new Chart(document.getElementById('chartAge'), {
+    type: 'radar',
+    data: { labels: positions.map(p=>POS_NAMES[p]), datasets:[{ data: avgAges, backgroundColor:'rgba(0,230,118,.1)', borderColor:'#00e676', pointBackgroundColor:'#00e676', borderWidth:2 }] },
+    options: { plugins:{legend:{display:false}}, scales:{r:{grid:{color:'#1e3048'},pointLabels:{color:'#5a7a9a',font:{size:12}},ticks:{color:'#1e3048',backdropColor:'transparent'}}}, responsive:true, maintainAspectRatio:false }
+  });
+
+  const top10 = [...DATA].sort((a,b)=>b.Gols_Marcados-a.Gols_Marcados).slice(0,10);
+  new Chart(document.getElementById('chartTop10'), {
+    type: 'bar',
+    data: {
+      labels: top10.map(d=>d.Jogador),
+      datasets: [
+        { label: 'Gols', data: top10.map(d=>d.Gols_Marcados), backgroundColor: '#00e676', borderRadius: 6, borderSkipped: false },
+        { label: 'Assistências', data: top10.map(d=>d.Assistencias), backgroundColor: '#00b0ff', borderRadius: 6, borderSkipped: false },
+      ]
+    },
+    options: {
+      plugins:{legend:{position:'top',labels:{padding:20}}},
+      scales:{y:{grid:{color:'#1e3048'},stacked:false},x:{grid:{display:false}}},
+      responsive:true, maintainAspectRatio:false
+    }
+  });
+}
+
+// ──────────────────────────────────────────────
+//  TEAMS GRID
+// ──────────────────────────────────────────────
+function buildTeams() {
+  const teams = [...new Set(DATA.map(d=>d.Time))].sort();
+  const container = document.getElementById('teamsGrid');
+  teams.forEach(t => {
+    const players = DATA.filter(d=>d.Time===t);
+    const league = players[0].Liga;
+    const color = LEAGUE_COLORS[league]||'#aaa';
+    const totalGoals = players.reduce((s,d)=>s+d.Gols_Marcados,0);
+    const totalAssists = players.reduce((s,d)=>s+d.Assistencias,0);
+    const avgWin = players[0].Partidas_Disputadas ? Math.round(players[0].Vitorias/players[0].Partidas_Disputadas*100) : 0;
+    const avgAge = (players.filter(d=>d.Idade>0).reduce((s,d)=>s+d.Idade,0)/players.filter(d=>d.Idade>0).length).toFixed(1);
+    const card = document.createElement('div');
+    card.className = 'team-card';
+    card.innerHTML = `
+      <div class="team-card-top">
+        <div>
+          <div class="team-card-name">${t}</div>
+          <div class="team-card-league">${league}</div>
+        </div>
+        <div class="league-dot" style="background:${color}"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:1rem">
+        <div><div class="wrate" style="color:${color}">${avgWin}%</div><div class="wrate-label">Win Rate</div></div>
+        <div style="text-align:right;font-size:.75rem;color:var(--muted)">${players.length} jogadores<br>Média ${avgAge} anos</div>
+      </div>
+      <div class="team-mini-stats">
+        <div class="tms"><div class="tms-val">${totalGoals}</div><div class="tms-label">Gols</div></div>
+        <div class="tms"><div class="tms-val">${totalAssists}</div><div class="tms-label">Assists</div></div>
+        <div class="tms"><div class="tms-val">${players[0].Partidas_Disputadas}</div><div class="tms-label">Jogos</div></div>
+        <div class="tms"><div class="tms-val">${players.reduce((s,d)=>s+d.Cartoes_Amarelos,0)}</div><div class="tms-label">Amarelos</div></div>
+      </div>`;
+    card.onclick = () => {
+      activeLeague = 'Todos';
+      document.getElementById('searchInput').value = t;
+      document.querySelectorAll('.tab').forEach(tb=>{ tb.classList.toggle('active', tb.textContent==='Todos'); });
+      currentPage = 1;
+      renderTable();
+      document.getElementById('players').scrollIntoView({behavior:'smooth'});
+    };
+    container.appendChild(card);
+  });
+}
+
+// ──────────────────────────────────────────────
+//  COLUMN SORT
+// ──────────────────────────────────────────────
+document.querySelectorAll('th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if(sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = -1; }
+    document.querySelectorAll('th').forEach(t=>t.classList.remove('sorted'));
+    th.classList.add('sorted');
+    th.querySelector('.sort-arrow').textContent = sortDir===-1?'↓':'↑';
+    currentPage = 1;
+    renderTable();
+  });
+});
+
+// ──────────────────────────────────────────────
+//  EVENTS
+// ──────────────────────────────────────────────
+document.getElementById('searchInput').addEventListener('input', () => { currentPage=1; renderTable(); });
+document.getElementById('posFilter').addEventListener('change', () => { currentPage=1; renderTable(); });
+document.getElementById('sortField').addEventListener('change', () => { currentPage=1; renderTable(); });
+
+// ──────────────────────────────────────────────
+//  SCROLL REVEAL
+// ──────────────────────────────────────────────
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+// ──────────────────────────────────────────────
+//  INIT
+// ──────────────────────────────────────────────
+buildTabs();
+renderTable();
+buildPodium('podium','Gols_Marcados','Gols');
+buildPodium('podiumAssists','Assistencias','Assists');
+buildCharts();
+buildTeams();
+initCounters();
+</script>
+</body>
+</html>
